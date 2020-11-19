@@ -1,0 +1,7 @@
+<Project>
+  <!-- Microsoft.Interop.DllImportGenerator -->
+  <ItemGroup Condition="'$(EnableDllImportGenerator)' == 'true'">
+    <PackageReference Include="Microsoft.Interop.Ancillary" Version="$(MicrosoftInteropAncillaryVersion)" />
+    <PackageReference Include="Microsoft.Interop.DllImportGenerator" Version="$(MicrosoftInteropDllImportGeneratorVersion)" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
