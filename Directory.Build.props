@@ -217,7 +217,6 @@
   <Import Project="$(RepositoryEngineeringDir)native\naming.props" />
   <Import Project="$(RepositoryEngineeringDir)Subsets.props" />
   <Import Project="$(RepositoryEngineeringDir)Analyzers.props" />
-  <Import Project="$(RepositoryEngineeringDir)Generators.props" />
 
   <PropertyGroup>
     <CoreLibSharedDir>$([MSBuild]::NormalizeDirectory('$(LibrariesProjectRoot)', 'System.Private.CoreLib', 'src'))</CoreLibSharedDir>

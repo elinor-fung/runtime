@@ -43,10 +43,6 @@
                                                   '$(DisableImplicitFrameworkReferences)' != 'true' and
                                                   '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and
                                                   ('$(IsReferenceAssembly)' == 'true' or '$(IsSourceProject)' == 'true')">true</DisableImplicitAssemblyReferences>
-    <EnableDllImportGenerator Condition="'$(EnableDllImportGenerator)' == '' and
-                                         '$(IsNETCoreAppSrc)' == 'true' and
-                                         '$(MSBuildProjectExtension)' == '.csproj' and
-                                         $([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net5.0'))">true</EnableDllImportGenerator>
   </PropertyGroup>
 
   <Import Project="$(RepositoryEngineeringDir)versioning.targets" />
