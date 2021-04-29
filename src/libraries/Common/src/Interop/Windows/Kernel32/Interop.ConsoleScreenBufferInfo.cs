@@ -7,6 +7,7 @@ internal static partial class Interop
 {
     internal static partial class Kernel32
     {
+        [BlittableType]
         [StructLayoutAttribute(LayoutKind.Sequential)]
         internal struct CONSOLE_SCREEN_BUFFER_INFO
         {
@@ -17,6 +18,7 @@ internal static partial class Interop
             internal COORD dwMaximumWindowSize;
         }
 
+        [BlittableType]
         [StructLayoutAttribute(LayoutKind.Sequential)]
         internal partial struct COORD
         {
@@ -24,6 +26,7 @@ internal static partial class Interop
             internal short Y;
         }
 
+        [BlittableType]
         [StructLayoutAttribute(LayoutKind.Sequential)]
         internal partial struct SMALL_RECT
         {

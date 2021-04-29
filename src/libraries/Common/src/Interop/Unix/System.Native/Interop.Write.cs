@@ -20,7 +20,7 @@ internal static partial class Interop
         [DllImport(Libraries.SystemNative, EntryPoint = "SystemNative_Write", SetLastError = true)]
         internal static extern unsafe int Write(SafeHandle fd, byte* buffer, int bufferSize);
 
-        [DllImport(Libraries.SystemNative, EntryPoint = "SystemNative_Write", SetLastError = true)]
-        internal static extern unsafe int Write(IntPtr fd, byte* buffer, int bufferSize);
+        [GeneratedDllImport(Libraries.SystemNative, EntryPoint = "SystemNative_Write", SetLastError = true)]
+        internal static unsafe partial int Write(IntPtr fd, byte* buffer, int bufferSize);
     }
 }
