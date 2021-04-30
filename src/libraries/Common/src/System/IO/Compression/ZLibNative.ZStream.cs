@@ -13,6 +13,7 @@ namespace System.IO.Compression
         /// Always use <code>ZLibNative.DeflateInit2_</code> or <code>ZLibNative.InflateInit2_</code> instead.
         /// Those methods will wrap this structure into a <code>SafeHandle</code> and thus make sure that it is always disposed correctly.
         /// </summary>
+        [BlittableType]
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
         internal struct ZStream
         {
