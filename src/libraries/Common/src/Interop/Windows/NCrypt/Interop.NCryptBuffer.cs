@@ -32,6 +32,7 @@ internal static partial class Interop
             public IntPtr pvBuffer;
         }
 
+        [BlittableType]
         [StructLayout(LayoutKind.Sequential)]
         internal struct NCryptBufferDesc
         {
