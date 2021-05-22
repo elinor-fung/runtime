@@ -64,12 +64,13 @@ internal static partial class Interop
                     Handle = handle;
 
                     int hashSize;
+                    int cbHashSize;
                     NTSTATUS ntStatus = Interop.BCrypt.BCryptGetProperty(
                         handle,
                         Interop.BCrypt.BCryptPropertyStrings.BCRYPT_HASH_LENGTH,
                         &hashSize,
                         sizeof(int),
-                        out int cbHashSize,
+                        &cbHashSize,
                         0);
 
                     if (ntStatus != NTSTATUS.STATUS_SUCCESS)

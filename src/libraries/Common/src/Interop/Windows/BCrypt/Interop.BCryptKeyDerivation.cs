@@ -17,7 +17,7 @@ internal static partial class Interop
             BCryptBufferDesc* pParameterList,
             byte* pbDerivedKey,
             int cbDerivedKey,
-            out uint pcbResult,
+            uint* pcbResult,
             int dwFlags);
     }
 }

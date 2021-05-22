@@ -35,6 +35,7 @@ namespace System.Security.Cryptography
                 authInfo.pbAuthData = associatedDataBytes;
                 authInfo.cbAuthData = associatedData.Length;
 
+                int ciphertextBytesWritten;
                 NTSTATUS ntStatus = BCryptEncrypt(
                     keyHandle,
                     plaintextBytes,
@@ -44,7 +45,7 @@ namespace System.Security.Cryptography
                     0,
                     ciphertextBytes,
                     ciphertext.Length,
-                    out int ciphertextBytesWritten,
+                    &ciphertextBytesWritten,
                     0);
 
                 Debug.Assert(plaintext.Length == ciphertextBytesWritten);
@@ -80,6 +81,7 @@ namespace System.Security.Cryptography
                 authInfo.pbAuthData = associatedDataBytes;
                 authInfo.cbAuthData = associatedData.Length;
 
+                int plaintextBytesWritten;
                 NTSTATUS ntStatus = BCryptDecrypt(
                     keyHandle,
                     ciphertextBytes,
@@ -89,7 +91,7 @@ namespace System.Security.Cryptography
                     0,
                     plaintextBytes,
                     plaintext.Length,
-                    out int plaintextBytesWritten,
+                    &plaintextBytesWritten,
                     0);
 
                 Debug.Assert(ciphertext.Length == plaintextBytesWritten);

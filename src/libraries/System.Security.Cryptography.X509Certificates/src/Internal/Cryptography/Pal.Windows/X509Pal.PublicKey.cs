@@ -345,14 +345,14 @@ namespace Internal.Cryptography.Pal
             unsafe
             {
                 int numBytesNeeded;
-                NTSTATUS errorCode = Interop.BCrypt.BCryptGetProperty(cryptHandle, propertyName, null, 0, out numBytesNeeded, 0);
+                NTSTATUS errorCode = Interop.BCrypt.BCryptGetProperty(cryptHandle, propertyName, null, 0, &numBytesNeeded, 0);
                 if (errorCode != NTSTATUS.STATUS_SUCCESS)
                     return null;
 
                 byte[] propertyValue = new byte[numBytesNeeded];
                 fixed (byte* pPropertyValue = propertyValue)
                 {
-                    errorCode = Interop.BCrypt.BCryptGetProperty(cryptHandle, propertyName, pPropertyValue, propertyValue.Length, out numBytesNeeded, 0);
+                    errorCode = Interop.BCrypt.BCryptGetProperty(cryptHandle, propertyName, pPropertyValue, propertyValue.Length, &numBytesNeeded, 0);
                 }
                 if (errorCode != NTSTATUS.STATUS_SUCCESS)
                     return null;

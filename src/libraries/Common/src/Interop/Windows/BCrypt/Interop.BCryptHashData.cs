@@ -10,10 +10,18 @@ internal static partial class Interop
 {
     internal static partial class BCrypt
     {
-        internal static NTSTATUS BCryptHashData(SafeBCryptHashHandle hHash, ReadOnlySpan<byte> pbInput, int cbInput, int dwFlags) =>
-            BCryptHashData(hHash, ref MemoryMarshal.GetReference(pbInput), cbInput, dwFlags);
+        internal static NTSTATUS BCryptHashData(SafeBCryptHashHandle hHash, ReadOnlySpan<byte> input, int cbInput, int dwFlags)
+        {
+            unsafe
+            {
+                fixed (byte* pbInput = &MemoryMarshal.GetReference(input))
+                {
+                    return BCryptHashData(hHash, pbInput, cbInput, dwFlags);
+                }
+            }
+        }
 
         [GeneratedDllImport(Libraries.BCrypt, CharSet = CharSet.Unicode)]
-        private static partial NTSTATUS BCryptHashData(SafeBCryptHashHandle hHash, ref byte pbInput, int cbInput, int dwFlags);
+        private static unsafe partial NTSTATUS BCryptHashData(SafeBCryptHashHandle hHash, byte* pbInput, int cbInput, int dwFlags);
     }
 }

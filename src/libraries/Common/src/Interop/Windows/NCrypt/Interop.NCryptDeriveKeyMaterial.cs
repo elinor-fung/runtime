@@ -16,13 +16,13 @@ internal static partial class Interop
         ///     Generate a key from a secret agreement
         /// </summary>
         [GeneratedDllImport(Interop.Libraries.NCrypt, CharSet = CharSet.Unicode)]
-        private static partial ErrorCode NCryptDeriveKey(
+        private static unsafe partial ErrorCode NCryptDeriveKey(
             SafeNCryptSecretHandle hSharedSecret,
             string pwszKDF,
             ref NCryptBufferDesc pParameterList,
             [MarshalAs(UnmanagedType.LPArray)] byte[]? pbDerivedKey,
             int cbDerivedKey,
-            out int pcbResult,
+            int* pcbResult,
             SecretAgreementFlags dwFlags);
 
         /// <summary>
@@ -131,13 +131,14 @@ internal static partial class Interop
                 parameterDesc.pBuffers = new IntPtr(pParameters);
 
                 // Figure out how big the key material is
+                int keySize;
                 ErrorCode error = NCryptDeriveKey(
                     secretAgreement,
                     kdf,
                     ref parameterDesc,
                     null,
                     0,
-                    out int keySize,
+                    &keySize,
                     flags);
 
                 if (error != ErrorCode.ERROR_SUCCESS && error != ErrorCode.NTE_BUFFER_TOO_SMALL)
@@ -154,7 +155,7 @@ internal static partial class Interop
                     ref parameterDesc,
                     keyMaterial,
                     keyMaterial.Length,
-                    out keySize,
+                    &keySize,
                     flags);
 
                 if (error != ErrorCode.ERROR_SUCCESS)

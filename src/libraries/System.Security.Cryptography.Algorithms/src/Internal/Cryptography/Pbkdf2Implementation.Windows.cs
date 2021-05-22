@@ -201,12 +201,13 @@ namespace Internal.Cryptography
                     bufferDesc.cBuffers = buffers.Length;
                     bufferDesc.pBuffers = (IntPtr)pBuffers;
 
+                    uint resultLength;
                     NTSTATUS deriveStatus = Interop.BCrypt.BCryptKeyDerivation(
                         keyHandle,
                         &bufferDesc,
                         pDestination,
                         destination.Length,
-                        out uint resultLength,
+                        &resultLength,
                         dwFlags: 0);
 
                     if (deriveStatus != NTSTATUS.STATUS_SUCCESS)

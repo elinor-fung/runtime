@@ -20,7 +20,7 @@ internal static partial class Interop
                 fixed (byte* pbOutput = output)
                 {
                     int cbResult;
-                    NTSTATUS ntStatus = BCryptEncrypt(hKey, pbInput, input.Length, IntPtr.Zero, iv, iv == null ? 0 : iv.Length, pbOutput, output.Length, out cbResult, 0);
+                    NTSTATUS ntStatus = BCryptEncrypt(hKey, pbInput, input.Length, IntPtr.Zero, iv, iv == null ? 0 : iv.Length, pbOutput, output.Length, &cbResult, 0);
 
                     if (ntStatus != NTSTATUS.STATUS_SUCCESS)
                     {
@@ -41,7 +41,7 @@ internal static partial class Interop
                 fixed (byte* pbOutput = output)
                 {
                     int cbResult;
-                    NTSTATUS ntStatus = BCryptDecrypt(hKey, pbInput, input.Length, IntPtr.Zero, iv, iv == null ? 0 : iv.Length, pbOutput, output.Length, out cbResult, 0);
+                    NTSTATUS ntStatus = BCryptDecrypt(hKey, pbInput, input.Length, IntPtr.Zero, iv, iv == null ? 0 : iv.Length, pbOutput, output.Length, &cbResult, 0);
 
                     if (ntStatus != NTSTATUS.STATUS_SUCCESS)
                     {
@@ -54,9 +54,9 @@ internal static partial class Interop
         }
 
         [GeneratedDllImport(Libraries.BCrypt, CharSet = CharSet.Unicode)]
-        public static unsafe partial NTSTATUS BCryptEncrypt(SafeKeyHandle hKey, byte* pbInput, int cbInput, IntPtr paddingInfo, byte[]? pbIV, int cbIV, byte* pbOutput, int cbOutput, out int cbResult, int dwFlags);
+        public static unsafe partial NTSTATUS BCryptEncrypt(SafeKeyHandle hKey, byte* pbInput, int cbInput, IntPtr paddingInfo, byte[]? pbIV, int cbIV, byte* pbOutput, int cbOutput, int* cbResult, int dwFlags);
 
         [GeneratedDllImport(Libraries.BCrypt, CharSet = CharSet.Unicode)]
-        public static unsafe partial NTSTATUS BCryptDecrypt(SafeKeyHandle hKey, byte* pbInput, int cbInput, IntPtr paddingInfo, byte[]? pbIV, int cbIV, byte* pbOutput, int cbOutput, out int cbResult, int dwFlags);
+        public static unsafe partial NTSTATUS BCryptDecrypt(SafeKeyHandle hKey, byte* pbInput, int cbInput, IntPtr paddingInfo, byte[]? pbIV, int cbIV, byte* pbOutput, int cbOutput, int* cbResult, int dwFlags);
     }
 }
