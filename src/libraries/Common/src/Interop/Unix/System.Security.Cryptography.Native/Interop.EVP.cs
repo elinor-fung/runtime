@@ -19,11 +19,19 @@ internal static partial class Interop
         [GeneratedDllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_EvpDigestReset")]
         internal static partial int EvpDigestReset(SafeEvpMdCtxHandle ctx, IntPtr type);
 
-        internal static int EvpDigestUpdate(SafeEvpMdCtxHandle ctx, ReadOnlySpan<byte> d, int cnt) =>
-            EvpDigestUpdate(ctx, ref MemoryMarshal.GetReference(d), cnt);
+        internal static int EvpDigestUpdate(SafeEvpMdCtxHandle ctx, ReadOnlySpan<byte> d, int cnt)
+        {
+            unsafe
+            {
+                fixed (byte* ptr = &MemoryMarshal.GetReference(d))
+                {
+                    return EvpDigestUpdate(ctx, ptr, cnt);
+                }
+            }
+        }
 
         [GeneratedDllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_EvpDigestUpdate")]
-        private static partial int EvpDigestUpdate(SafeEvpMdCtxHandle ctx, ref byte d, int cnt);
+        private static unsafe partial int EvpDigestUpdate(SafeEvpMdCtxHandle ctx, byte* d, int cnt);
 
         [GeneratedDllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_EvpDigestFinalEx")]
         internal static partial int EvpDigestFinalEx(SafeEvpMdCtxHandle ctx, ref byte md, ref uint s);

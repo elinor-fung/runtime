@@ -15,8 +15,8 @@ internal static partial class Interop
         internal static partial SafeEvpPKeyCtxHandle EvpPKeyCtxCreate(SafeEvpPKeyHandle pkey, SafeEvpPKeyHandle peerkey, out uint secretLength);
 
         [GeneratedDllImport(Libraries.CryptoNative, EntryPoint = "CryptoNative_EvpPKeyDeriveSecretAgreement")]
-        private static partial int EvpPKeyDeriveSecretAgreement(
-            ref byte secret,
+        private static unsafe partial int EvpPKeyDeriveSecretAgreement(
+            byte* secret,
             uint secretLength,
             SafeEvpPKeyCtxHandle ctx);
 
@@ -28,10 +28,17 @@ internal static partial class Interop
             Debug.Assert(ctx != null);
             Debug.Assert(!ctx.IsInvalid);
 
-            int ret = EvpPKeyDeriveSecretAgreement(
-                ref MemoryMarshal.GetReference(destination),
-                (uint)destination.Length,
-                ctx);
+            int ret;
+            unsafe
+            {
+                fixed (byte* destinationPtr = &MemoryMarshal.GetReference(destination))
+                {
+                    ret = EvpPKeyDeriveSecretAgreement(
+                        destinationPtr,
+                        (uint)destination.Length,
+                        ctx);
+                }
+            }
 
             if (ret != 1)
             {

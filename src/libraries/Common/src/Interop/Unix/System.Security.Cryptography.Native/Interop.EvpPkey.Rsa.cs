@@ -28,13 +28,13 @@ internal static partial class Interop
         }
 
         [GeneratedDllImport(Libraries.CryptoNative)]
-        private static partial int CryptoNative_RsaDecrypt(
+        private static unsafe partial int CryptoNative_RsaDecrypt(
             SafeEvpPKeyHandle pkey,
-            ref byte source,
+            byte* source,
             int sourceLength,
             RSAEncryptionPaddingMode paddingMode,
             IntPtr digestAlgorithm,
-            ref byte destination,
+            byte* destination,
             int destinationLength);
 
         internal static int RsaDecrypt(
@@ -44,14 +44,22 @@ internal static partial class Interop
             IntPtr digestAlgorithm,
             Span<byte> destination)
         {
-            int written = CryptoNative_RsaDecrypt(
-                pkey,
-                ref MemoryMarshal.GetReference(source),
-                source.Length,
-                paddingMode,
-                digestAlgorithm,
-                ref MemoryMarshal.GetReference(destination),
-                destination.Length);
+            int written;
+            unsafe
+            {
+                fixed (byte* sourcePtr = &MemoryMarshal.GetReference(source))
+                fixed (byte* destinationPtr = &MemoryMarshal.GetReference(destination))
+                {
+                    written = CryptoNative_RsaDecrypt(
+                        pkey,
+                        sourcePtr,
+                        source.Length,
+                        paddingMode,
+                        digestAlgorithm,
+                        destinationPtr,
+                        destination.Length);
+                }
+            }
 
             if (written < 0)
             {
@@ -63,13 +71,13 @@ internal static partial class Interop
         }
 
         [GeneratedDllImport(Libraries.CryptoNative)]
-        private static partial int CryptoNative_RsaEncrypt(
+        private static unsafe partial int CryptoNative_RsaEncrypt(
             SafeEvpPKeyHandle pkey,
-            ref byte source,
+            byte* source,
             int sourceLength,
             RSAEncryptionPaddingMode paddingMode,
             IntPtr digestAlgorithm,
-            ref byte destination,
+            byte* destination,
             int destinationLength);
 
         internal static int RsaEncrypt(
@@ -79,14 +87,22 @@ internal static partial class Interop
             IntPtr digestAlgorithm,
             Span<byte> destination)
         {
-            int written = CryptoNative_RsaEncrypt(
-                pkey,
-                ref MemoryMarshal.GetReference(source),
-                source.Length,
-                paddingMode,
-                digestAlgorithm,
-                ref MemoryMarshal.GetReference(destination),
-                destination.Length);
+            int written;
+            unsafe
+            {
+                fixed (byte* sourcePtr = &MemoryMarshal.GetReference(source))
+                fixed (byte* destinationPtr = &MemoryMarshal.GetReference(destination))
+                {
+                    written = CryptoNative_RsaEncrypt(
+                        pkey,
+                        sourcePtr,
+                        source.Length,
+                        paddingMode,
+                        digestAlgorithm,
+                        destinationPtr,
+                        destination.Length);
+                }
+            }
 
             if (written < 0)
             {
@@ -98,13 +114,13 @@ internal static partial class Interop
         }
 
         [GeneratedDllImport(Libraries.CryptoNative)]
-        private static partial int CryptoNative_RsaSignHash(
+        private static unsafe partial int CryptoNative_RsaSignHash(
             SafeEvpPKeyHandle pkey,
             RSASignaturePaddingMode paddingMode,
             IntPtr digestAlgorithm,
-            ref byte hash,
+            byte* hash,
             int hashLength,
-            ref byte destination,
+            byte* destination,
             int destinationLength);
 
         internal static int RsaSignHash(
@@ -114,14 +130,22 @@ internal static partial class Interop
             ReadOnlySpan<byte> hash,
             Span<byte> destination)
         {
-            int written = CryptoNative_RsaSignHash(
-                pkey,
-                paddingMode,
-                digestAlgorithm,
-                ref MemoryMarshal.GetReference(hash),
-                hash.Length,
-                ref MemoryMarshal.GetReference(destination),
-                destination.Length);
+            int written;
+            unsafe
+            {
+                fixed (byte* hashPtr = &MemoryMarshal.GetReference(hash))
+                fixed (byte* destinationPtr = &MemoryMarshal.GetReference(destination))
+                {
+                    written = CryptoNative_RsaSignHash(
+                        pkey,
+                        paddingMode,
+                        digestAlgorithm,
+                        hashPtr,
+                        hash.Length,
+                        destinationPtr,
+                        destination.Length);
+                }
+            }
 
             if (written < 0)
             {
@@ -133,13 +157,13 @@ internal static partial class Interop
         }
 
         [GeneratedDllImport(Libraries.CryptoNative)]
-        private static partial int CryptoNative_RsaVerifyHash(
+        private static unsafe partial int CryptoNative_RsaVerifyHash(
             SafeEvpPKeyHandle pkey,
             RSASignaturePaddingMode paddingMode,
             IntPtr digestAlgorithm,
-            ref byte hash,
+            byte* hash,
             int hashLength,
-            ref byte signature,
+            byte* signature,
             int signatureLength);
 
         internal static bool RsaVerifyHash(
@@ -149,14 +173,22 @@ internal static partial class Interop
             ReadOnlySpan<byte> hash,
             ReadOnlySpan<byte> signature)
         {
-            int ret = CryptoNative_RsaVerifyHash(
-                pkey,
-                paddingMode,
-                digestAlgorithm,
-                ref MemoryMarshal.GetReference(hash),
-                hash.Length,
-                ref MemoryMarshal.GetReference(signature),
-                signature.Length);
+            int ret;
+            unsafe
+            {
+                fixed (byte* hashPtr = &MemoryMarshal.GetReference(hash))
+                fixed (byte* signaturePtr = &MemoryMarshal.GetReference(signature))
+                {
+                    ret = CryptoNative_RsaVerifyHash(
+                        pkey,
+                        paddingMode,
+                        digestAlgorithm,
+                        hashPtr,
+                        hash.Length,
+                        signaturePtr,
+                        signature.Length);
+                }
+            }
 
             if (ret == 1)
             {
