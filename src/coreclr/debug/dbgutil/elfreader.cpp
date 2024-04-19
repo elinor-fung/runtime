@@ -393,7 +393,7 @@ ElfReader::EnumerateLinkMapEntries(Elf_Dyn* dynamicAddr)
             for (int i = 0; i < PATH_MAX; i++)
             {
                 char ch;
-                if (!ReadMemory(map.l_name + i, &ch, sizeof(ch))) {
+                if (!ReadMemory((void*)(map.l_name + i), &ch, sizeof(ch))) {
                     Trace("DSO: ReadMemory link_map name %p + %d FAILED\n", map.l_name, i);
                     break;
                 }
@@ -406,7 +406,7 @@ ElfReader::EnumerateLinkMapEntries(Elf_Dyn* dynamicAddr)
         Trace("\nDSO: link_map entry %p l_ld %p l_addr (Ehdr) %p l_name %p %s\n", linkMapAddr, map.l_ld, map.l_addr, map.l_name, moduleName.c_str());
 
         // Call the derived class for each module
-        VisitModule(map.l_addr, moduleName);
+        VisitModule((uint64_t)map.l_addr, moduleName);
 
         linkMapAddr = map.l_next;
     }

@@ -28,7 +28,11 @@
 
 #ifdef USE_DAC_TABLE_RVA
 #include <dactablerva.h>
-#else
+#endif
+
+// Platforms that don't use the RVA file for the DAC table will look up the export symbol (via dbgutil).
+// Freebsd uses the RVA file, but also has the export symbol lookup utility.
+#if !defined(USE_DAC_TABLE_RVA) || defined(TARGET_FREEBSD)
 extern "C" bool TryGetSymbol(ICorDebugDataTarget* dataTarget, uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddress);
 // cDAC depends on symbol lookup to find the contract descriptor
 #define CAN_USE_CDAC
