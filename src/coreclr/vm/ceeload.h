@@ -611,7 +611,7 @@ class Module : public ModuleBase
 
 private:
     PTR_CUTF8               m_pSimpleName; // Cached simple name for better performance and easier diagnostics
-    const WCHAR*            m_path;        // Cached path for easier diagnostics
+    PTR_CWSTR               m_path;        // Cached path for easier diagnostics
 
     PTR_PEAssembly          m_pPEAssembly;
     PTR_VOID                m_baseAddress; // Cached base address for easier diagnostics
@@ -1381,7 +1381,7 @@ public:
     }
 
     HRESULT GetScopeName(LPCUTF8 * pszName) { WRAPPER_NO_CONTRACT; return m_pPEAssembly->GetScopeName(pszName); }
-    const SString &GetPath() { WRAPPER_NO_CONTRACT; return m_pPEAssembly->GetPath(); }
+    PTR_CWSTR GetPath() const { WRAPPER_NO_CONTRACT; return m_path; }
 
 #ifdef LOGGING
     LPCUTF8 GetDebugName() { WRAPPER_NO_CONTRACT; return m_pPEAssembly->GetDebugName(); }
@@ -1640,6 +1640,7 @@ struct cdac_data<Module>
     static constexpr size_t LoaderAllocator = offsetof(Module, m_loaderAllocator);
     static constexpr size_t ThunkHeap = offsetof(Module, m_pThunkHeap);
     static constexpr size_t DynamicMetadata = offsetof(Module, m_pDynamicMetadata);
+    static constexpr size_t Path = offsetof(Module, m_path);
 
     // Lookup map pointers
     static constexpr size_t FieldDefToDescMap = offsetof(Module, m_FieldDefToDescMap) + offsetof(LookupMap<PTR_FieldDesc>, pTable);

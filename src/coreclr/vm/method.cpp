@@ -3643,10 +3643,13 @@ MethodDesc::EnumMemoryRegions(CLRDataEnumMemoryFlags flags)
         // The module path is used in the output of !clrstack and !pe if the
         // module is not available when the minidump is inspected. By retrieving
         // the path here, the required memory is implicitly dumped.
-        Module* pModule = GetModule();
-        if (pModule)
+        if (flags != CLRDATA_ENUM_MEM_TRIAGE)
         {
-            pModule->GetPath();
+            Module* pModule = GetModule();
+            if (pModule)
+            {
+                pModule->GetPath();
+            }
         }
     }
 

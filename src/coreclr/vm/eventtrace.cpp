@@ -4352,7 +4352,7 @@ VOID ETW::LoaderLog::SendModuleEvent(Module *pModule, DWORD dwEventOptions, BOOL
 
     if(!bIsDynamicAssembly)
     {
-        ModuleILPath = (PWCHAR)pModule->GetAssembly()->GetPEAssembly()->GetPEImage()->GetPath().GetUnicode();
+        ModuleILPath = (PWCHAR)pModule->GetPath();
         ModuleNativePath = (PWCHAR)pEmptyString;
     }
 

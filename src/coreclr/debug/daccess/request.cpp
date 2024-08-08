@@ -1617,22 +1617,24 @@ ClrDataAccess::GetMethodDescName(CLRDATA_ADDRESS methodDesc, unsigned int count,
             Module* pModule = pMD->GetModule();
             if (pModule)
             {
-                WCHAR path[MAX_LONGPATH];
-                COUNT_T nChars = 0;
-                if (pModule->GetPath().DacGetUnicode(ARRAY_SIZE(path), path, &nChars) &&
-                    nChars > 0 && nChars <= ARRAY_SIZE(path))
+                PTR_CWSTR path = pModule->GetPath();
+                if (path.IsValid()) // Triage dumps don't have paths
                 {
-                    WCHAR* pFile = path + nChars - 1;
-                    while ((pFile >= path) && (*pFile != DIRECTORY_SEPARATOR_CHAR_W))
+                    size_t nChars = u16_strlen(path);
+                    if (nChars > 0)
                     {
-                        pFile--;
-                    }
-                    pFile++;
-                    if (*pFile)
-                    {
-                        str.Append(pFile);
-                        str.Append(W("!Unknown"));
-                        hr = S_OK;
+                        const WCHAR* pFile = path + nChars - 1;
+                        while ((pFile >= path) && (*pFile != DIRECTORY_SEPARATOR_CHAR_W))
+                        {
+                            pFile--;
+                        }
+                        pFile++;
+                        if (*pFile)
+                        {
+                            str.Append(pFile);
+                            str.Append(W("!Unknown"));
+                            hr = S_OK;
+                        }
                     }
                 }
             }
@@ -2493,22 +2495,33 @@ ClrDataAccess::GetPEFileName(CLRDATA_ADDRESS moduleAddr, unsigned int count, _In
     PEAssembly* pPEAssembly = pModule->GetPEAssembly();
 
     // Turn from bytes to wide characters
-    if (!pPEAssembly->GetPath().IsEmpty())
+    PTR_CWSTR path = pModule->GetPath();
+    if (path.IsValid()) // Triage dumps don't have paths
     {
-        if (!pPEAssembly->GetPath().DacGetUnicode(count, fileName, pNeeded))
-            hr = E_FAIL;
-    }
-    else if (!pPEAssembly->IsReflectionEmit())
-    {
-        hr = E_NOTIMPL;
+        unsigned int len = (unsigned int)u16_strlen(path);
+        if (len > 0)
+        {
+            wcsncpy_s(fileName, count, path, _TRUNCATE);
+            fileName[count - 1] = 0;
+            if (pNeeded)
+                *pNeeded = len + 1;
+        }
+        else if (!pPEAssembly->IsReflectionEmit())
+        {
+            hr = E_NOTIMPL;
+        }
+        else
+        {
+            if (fileName && count)
+                fileName[0] = 0;
+
+            if (pNeeded)
+                *pNeeded = 1;
+        }
     }
     else
     {
-        if (fileName && count)
-            fileName[0] = 0;
-
-        if (pNeeded)
-            *pNeeded = 1;
+        hr = E_FAIL;
     }
 
     SOSDacLeave();

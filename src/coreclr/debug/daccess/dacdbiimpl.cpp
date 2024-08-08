@@ -4065,7 +4065,10 @@ BOOL DacDbiInterfaceImpl::GetAssemblyPath(
 
     // Get the path for the manifest module.
     // since we no longer support Win9x, we assume all paths will be in unicode format already
-    const WCHAR * szPath = pManifestModule->GetPath().DacGetRawUnicode();
+    PTR_CWSTR szPath = pManifestModule->GetPath();
+    if (!szPath.IsValid())
+        return FALSE;
+
     HRESULT hrStatus = pStrFilename->AssignCopy(szPath);
     IfFailThrow(hrStatus);
 
