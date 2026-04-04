@@ -754,7 +754,23 @@ Assembly *AssemblySpecBindingCache::LookupParentAssemblyForAssembly(Assembly *pA
         {
             Assembly *pParent = b->GetParentAssembly();
             if (pParent != NULL)
-                return pParent;
+            {
+                // The binding cache stores raw Assembly* parent pointers that are not
+                // lifetime-managed. If a collectible ALC was unloaded, the cached parent
+                // pointer may be stale. Validate it is still alive by checking if it
+                // appears as a bound assembly in this same cache. When a collectible ALC
+                // is unloaded, RemoveAssembly removes entries where m_pAssembly is the
+                // collected assembly. The caller holds the cache lock, so removal cannot
+                // happen concurrently — if the parent entry is found, the pointer is valid.
+                PtrHashMap::PtrIterator j = m_map.begin();
+                while (!j.end())
+                {
+                    AssemblyBinding *b2 = (AssemblyBinding*) j.GetValue();
+                    if (!b2->IsError() && b2->GetAssembly() == pParent)
+                        return pParent;
+                    ++j;
+                }
+            }
         }
         ++i;
     }
