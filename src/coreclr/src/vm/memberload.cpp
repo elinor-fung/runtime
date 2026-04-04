@@ -117,31 +117,24 @@ void DECLSPEC_NORETURN MemberLoader::ThrowMissingMethodException(MethodTable* pM
         // multiple times into different ALCs leading to type identity mismatches).
         if (pMT != NULL)
         {
-            Assembly *pAssembly = pMT->GetAssembly();
-            if (pAssembly != NULL)
-            {
-                PEAssembly *pPEAssembly = pAssembly->GetManifestFile();
-                if (pPEAssembly != NULL)
-                {
-                    InlineSString<MAX_LONGPATH> sAssemblyDisplayName;
-                    pPEAssembly->GetDisplayName(sAssemblyDisplayName);
+            PEAssembly *pPEAssembly = pMT->GetAssembly()->GetManifestFile();
+            InlineSString<MAX_LONGPATH> sAssemblyDisplayName;
+            pPEAssembly->GetDisplayName(sAssemblyDisplayName);
 
-                    if (pPEAssembly->GetPath().IsEmpty())
-                    {
-                        EX_THROW(EEMessageException, (kMissingMethodException,
-                            IDS_EE_MISSING_METHOD_DETAIL_BYTE,
-                            szwFullName,
-                            sAssemblyDisplayName.GetUnicode()));
-                    }
-                    else
-                    {
-                        EX_THROW(EEMessageException, (kMissingMethodException,
-                            IDS_EE_MISSING_METHOD_DETAIL_PATH,
-                            szwFullName,
-                            sAssemblyDisplayName.GetUnicode(),
-                            pPEAssembly->GetPath().GetUnicode()));
-                    }
-                }
+            if (pPEAssembly->GetPath().IsEmpty())
+            {
+                EX_THROW(EEMessageException, (kMissingMethodException,
+                    IDS_EE_MISSING_METHOD_DETAIL_BYTE,
+                    szwFullName,
+                    sAssemblyDisplayName.GetUnicode()));
+            }
+            else
+            {
+                EX_THROW(EEMessageException, (kMissingMethodException,
+                    IDS_EE_MISSING_METHOD_DETAIL_PATH,
+                    szwFullName,
+                    sAssemblyDisplayName.GetUnicode(),
+                    pPEAssembly->GetPath().GetUnicode()));
             }
         }
 
