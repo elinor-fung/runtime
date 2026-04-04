@@ -111,6 +111,40 @@ void DECLSPEC_NORETURN MemberLoader::ThrowMissingMethodException(MethodTable* pM
         MetaSig tmp(pSig, cSig, pModule, pTypeContext);
         SigFormat sf(tmp, szMember ? szMember : "?", szClassName, NULL);
         MAKE_WIDEPTR_FROMUTF8(szwFullName, sf.GetCString());
+
+        // Include assembly load information for the declaring type to help diagnose
+        // issues caused by AssemblyLoadContext mismatches (e.g. the same assembly loaded
+        // multiple times into different ALCs leading to type identity mismatches).
+        if (pMT != NULL)
+        {
+            Assembly *pAssembly = pMT->GetAssembly();
+            if (pAssembly != NULL)
+            {
+                PEAssembly *pPEAssembly = pAssembly->GetManifestFile();
+                if (pPEAssembly != NULL)
+                {
+                    InlineSString<MAX_LONGPATH> sAssemblyDisplayName;
+                    pPEAssembly->GetDisplayName(sAssemblyDisplayName);
+
+                    if (pPEAssembly->GetPath().IsEmpty())
+                    {
+                        EX_THROW(EEMessageException, (kMissingMethodException,
+                            IDS_EE_MISSING_METHOD_DETAIL_BYTE,
+                            szwFullName,
+                            sAssemblyDisplayName.GetUnicode()));
+                    }
+                    else
+                    {
+                        EX_THROW(EEMessageException, (kMissingMethodException,
+                            IDS_EE_MISSING_METHOD_DETAIL_PATH,
+                            szwFullName,
+                            sAssemblyDisplayName.GetUnicode(),
+                            pPEAssembly->GetPath().GetUnicode()));
+                    }
+                }
+            }
+        }
+
         EX_THROW(EEMessageException, (kMissingMethodException, IDS_EE_MISSING_METHOD, szwFullName));
     }
     else
