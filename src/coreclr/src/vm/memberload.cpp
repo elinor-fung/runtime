@@ -229,12 +229,16 @@ static BOOL FindSignatureTypeMismatch(
                 LPCUTF8 szAssemblyName1 = pAssembly1->GetSimpleName();
                 LPCUTF8 szAssemblyName2 = pAssembly2->GetSimpleName();
 
+                // Check for NULL namespace (global namespace) - treat both NULL as equal
+                BOOL namespacesMatch = (szNamespace1 == NULL && szNamespace2 == NULL) ||
+                                       (szNamespace1 != NULL && szNamespace2 != NULL &&
+                                        strcmp(szNamespace1, szNamespace2) == 0);
+
                 if (szName1 != NULL && szName2 != NULL &&
                     szAssemblyName1 != NULL && szAssemblyName2 != NULL &&
                     strcmp(szName1, szName2) == 0 &&
                     strcmp(szAssemblyName1, szAssemblyName2) == 0 &&
-                    ((szNamespace1 == szNamespace2) ||
-                     (szNamespace1 != NULL && szNamespace2 != NULL && strcmp(szNamespace1, szNamespace2) == 0)))
+                    namespacesMatch)
                 {
                     // Found an ALC mismatch! Same type name from the same assembly name,
                     // but resolved to different modules (different load contexts).
