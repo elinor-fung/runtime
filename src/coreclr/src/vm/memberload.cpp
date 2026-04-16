@@ -80,7 +80,7 @@ void DECLSPEC_NORETURN MemberLoader::ThrowMissingFieldException(MethodTable* pMT
     EX_THROW(EEMessageException, (kMissingFieldException, IDS_EE_MISSING_FIELD, szwFullName));
 }
 
-// Helper: Formats assembly detail info for a PEAssembly (display name + path or "byte array").
+// Helper: Formats assembly detail info for a PEAssembly using resource strings.
 static void FormatAssemblyInfo(PEAssembly *pPEAssembly, SString &sResult)
 {
     CONTRACTL
@@ -94,30 +94,34 @@ static void FormatAssemblyInfo(PEAssembly *pPEAssembly, SString &sResult)
     InlineSString<MAX_LONGPATH> sDisplayName;
     pPEAssembly->GetDisplayName(sDisplayName);
 
-    sResult.Append(W("'"));
-    sResult.Append(sDisplayName);
-    sResult.Append(W("'"));
+    InlineSString<MAX_LONGPATH> sFormat;
     if (pPEAssembly->GetPath().IsEmpty())
     {
-        sResult.Append(W(" (loaded from byte array)"));
+        sFormat.LoadResource(CCompRC::Debugging, IDS_EE_ALC_ASSEMBLY_INFO_BYTE);
+        sResult.Printf(sFormat.GetUnicode(),
+                        sDisplayName.GetUnicode());
     }
     else
     {
-        sResult.Append(W(" (loaded at '"));
-        sResult.Append(pPEAssembly->GetPath());
-        sResult.Append(W("')"));
+        sFormat.LoadResource(CCompRC::Debugging, IDS_EE_ALC_ASSEMBLY_INFO_PATH);
+        sResult.Printf(sFormat.GetUnicode(),
+                        sDisplayName.GetUnicode(),
+                        pPEAssembly->GetPath().GetUnicode());
     }
 }
 
 // Helper: When a method with the right name exists but its signature doesn't match,
 // look for an AssemblyLoadContext mismatch. This walks both signatures in parallel,
 // looking for a parameter/return type where both sides refer to the same type by name
-// but the types resolve to different modules (assemblies loaded in different contexts).
-// If found, outputs a diagnostic string identifying the mismatched type and both assemblies.
+// from the same assembly, but the types resolve to different modules because the
+// assemblies were loaded into different contexts.
+// If found, outputs the type name and formatted assembly info for both sides.
 static BOOL FindSignatureTypeMismatch(
     PCCOR_SIGNATURE pSig1, DWORD cSig1, Module *pModule1,  // caller's signature
     PCCOR_SIGNATURE pSig2, DWORD cSig2, Module *pModule2,  // candidate method's signature
-    SString &sMismatchInfo)
+    SString &sTypeName,
+    SString &sAssemblyInfo1,
+    SString &sAssemblyInfo2)
 {
     CONTRACTL
     {
@@ -157,9 +161,6 @@ static BOOL FindSignatureTypeMismatch(
 
     if (cArgs1 != cArgs2)
         return FALSE;
-
-    IMDInternalImport *pImport1 = pModule1->GetMDImport();
-    IMDInternalImport *pImport2 = pModule2->GetMDImport();
 
     // Walk the return type + all parameter types in parallel.
     for (ULONG i = 0; i <= cArgs1; i++)
@@ -210,7 +211,9 @@ static BOOL FindSignatureTypeMismatch(
                 if (pFoundModule1 == pFoundModule2)
                     break;
 
-                // Different modules - check if the type name is the same. If so, this is an ALC mismatch.
+                // Different modules - check if the type name AND the assembly simple name are both
+                // the same. This distinguishes a true ALC mismatch (same assembly loaded in different
+                // contexts) from simply different types that happen to share a name.
                 LPCSTR szName1 = NULL, szNamespace1 = NULL;
                 LPCSTR szName2 = NULL, szNamespace2 = NULL;
 
@@ -220,30 +223,34 @@ static BOOL FindSignatureTypeMismatch(
                     break;
                 }
 
+                Assembly *pAssembly1 = pFoundModule1->GetAssembly();
+                Assembly *pAssembly2 = pFoundModule2->GetAssembly();
+
+                LPCUTF8 szAssemblyName1 = pAssembly1->GetSimpleName();
+                LPCUTF8 szAssemblyName2 = pAssembly2->GetSimpleName();
+
                 if (szName1 != NULL && szName2 != NULL &&
+                    szAssemblyName1 != NULL && szAssemblyName2 != NULL &&
                     strcmp(szName1, szName2) == 0 &&
+                    strcmp(szAssemblyName1, szAssemblyName2) == 0 &&
                     ((szNamespace1 == szNamespace2) ||
                      (szNamespace1 != NULL && szNamespace2 != NULL && strcmp(szNamespace1, szNamespace2) == 0)))
                 {
-                    // Found an ALC mismatch! The same type name resolves to different modules.
-                    Assembly *pAssembly1 = pFoundModule1->GetAssembly();
-                    Assembly *pAssembly2 = pFoundModule2->GetAssembly();
-
+                    // Found an ALC mismatch! Same type name from the same assembly name,
+                    // but resolved to different modules (different load contexts).
                     PEAssembly *pPE1 = pAssembly1->GetManifestFile();
                     PEAssembly *pPE2 = pAssembly2->GetManifestFile();
 
-                    // Format the type name
+                    // Format the fully-qualified type name
                     if (szNamespace1 != NULL && *szNamespace1 != '\0')
                     {
-                        sMismatchInfo.AppendUTF8(szNamespace1);
-                        sMismatchInfo.Append(W("."));
+                        sTypeName.AppendUTF8(szNamespace1);
+                        sTypeName.Append(W("."));
                     }
-                    sMismatchInfo.AppendUTF8(szName1);
+                    sTypeName.AppendUTF8(szName1);
 
-                    sMismatchInfo.Append(W(" is loaded in the caller from "));
-                    FormatAssemblyInfo(pPE1, sMismatchInfo);
-                    sMismatchInfo.Append(W(" but in the target from "));
-                    FormatAssemblyInfo(pPE2, sMismatchInfo);
+                    FormatAssemblyInfo(pPE1, sAssemblyInfo1);
+                    FormatAssemblyInfo(pPE2, sAssemblyInfo2);
 
                     return TRUE;
                 }
@@ -323,16 +330,20 @@ void DECLSPEC_NORETURN MemberLoader::ThrowMissingMethodException(MethodTable* pM
                 DWORD cCandidateSig;
                 pCandidateMD->GetSig(&pCandidateSig, &cCandidateSig);
 
-                InlineSString<MAX_LONGPATH> sMismatchInfo;
+                InlineSString<MAX_LONGPATH> sTypeName;
+                InlineSString<MAX_LONGPATH> sAssemblyInfo1;
+                InlineSString<MAX_LONGPATH> sAssemblyInfo2;
                 if (FindSignatureTypeMismatch(
                         pSig, cSig, pModule,
                         pCandidateSig, cCandidateSig, pCandidateMD->GetModule(),
-                        sMismatchInfo))
+                        sTypeName, sAssemblyInfo1, sAssemblyInfo2))
                 {
                     EX_THROW(EEMessageException, (kMissingMethodException,
-                        IDS_EE_MISSING_METHOD_DETAIL,
+                        IDS_EE_MISSING_METHOD_ALC_MISMATCH,
                         szwFullName,
-                        sMismatchInfo.GetUnicode()));
+                        sTypeName.GetUnicode(),
+                        sAssemblyInfo1.GetUnicode(),
+                        sAssemblyInfo2.GetUnicode()));
                 }
             }
         }

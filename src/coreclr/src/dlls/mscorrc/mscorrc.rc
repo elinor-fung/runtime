@@ -474,7 +474,9 @@ BEGIN
 
     IDS_EE_MISSING_FIELD                    "Field not found: '%1'."
     IDS_EE_MISSING_METHOD                   "Method not found: '%1'."
-    IDS_EE_MISSING_METHOD_DETAIL            "Method not found: '%1'. Type mismatch detected: %2."
+    IDS_EE_MISSING_METHOD_ALC_MISMATCH      "Method not found: '%1'. The type '%2' exists in both '%3' and '%4' but the assemblies were loaded into different contexts."
+    IDS_EE_ALC_ASSEMBLY_INFO_PATH           "'%s' (loaded at '%s')"
+    IDS_EE_ALC_ASSEMBLY_INFO_BYTE           "'%s' (loaded from byte array)"
 
     IDS_EE_NO_IDISPATCH                     "This object cannot be marshaled as an IDispatch."
     IDS_EE_NO_IINSPECTABLE                  "Marshalling as IInspectable is not supported in the .NET runtime."
