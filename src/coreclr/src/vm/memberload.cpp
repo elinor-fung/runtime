@@ -80,15 +80,8 @@ void DECLSPEC_NORETURN MemberLoader::ThrowMissingFieldException(MethodTable* pMT
     EX_THROW(EEMessageException, (kMissingFieldException, IDS_EE_MISSING_FIELD, szwFullName));
 }
 
-// Helper: Collects assembly information for the types referenced in a method signature's
-// return type and parameters. This helps diagnose MissingMethodException caused by
-// AssemblyLoadContext mismatches where the same type loaded in different ALCs has
-// different identities, causing signature comparison to fail.
-static void AppendSignatureTypeAssemblyInfo(
-    PCCOR_SIGNATURE pSig,
-    DWORD           cSig,
-    Module         *pModule,
-    SString        &sInfo)
+// Helper: Formats assembly detail info for a PEAssembly (display name + path or "byte array").
+static void FormatAssemblyInfo(PEAssembly *pPEAssembly, SString &sResult)
 {
     CONTRACTL
     {
@@ -98,136 +91,183 @@ static void AppendSignatureTypeAssemblyInfo(
     }
     CONTRACTL_END;
 
-    if (pSig == NULL || cSig == 0 || pModule == NULL)
-        return;
+    InlineSString<MAX_LONGPATH> sDisplayName;
+    pPEAssembly->GetDisplayName(sDisplayName);
 
-    IMDInternalImport *pInternalImport = pModule->GetMDImport();
-    if (pInternalImport == NULL)
-        return;
-
-    // Walk the signature to find type references (ELEMENT_TYPE_CLASS / ELEMENT_TYPE_VALUETYPE).
-    // For each, look up the token to determine which assembly the type is from.
-    SigParser sig(pSig, cSig);
-
-    // Skip calling convention
-    ULONG callingConv;
-    if (FAILED(sig.GetCallingConvInfo(&callingConv)))
-        return;
-
-    // Skip generic param count if present
-    if (callingConv & IMAGE_CEE_CS_CALLCONV_GENERIC)
+    sResult.Append(W("'"));
+    sResult.Append(sDisplayName);
+    sResult.Append(W("'"));
+    if (pPEAssembly->GetPath().IsEmpty())
     {
-        ULONG genericParamCount;
-        if (FAILED(sig.GetData(&genericParamCount)))
-            return;
+        sResult.Append(W(" (loaded from byte array)"));
+    }
+    else
+    {
+        sResult.Append(W(" (loaded at '"));
+        sResult.Append(pPEAssembly->GetPath());
+        sResult.Append(W("')"));
+    }
+}
+
+// Helper: When a method with the right name exists but its signature doesn't match,
+// look for an AssemblyLoadContext mismatch. This walks both signatures in parallel,
+// looking for a parameter/return type where both sides refer to the same type by name
+// but the types resolve to different modules (assemblies loaded in different contexts).
+// If found, outputs a diagnostic string identifying the mismatched type and both assemblies.
+static BOOL FindSignatureTypeMismatch(
+    PCCOR_SIGNATURE pSig1, DWORD cSig1, Module *pModule1,  // caller's signature
+    PCCOR_SIGNATURE pSig2, DWORD cSig2, Module *pModule2,  // candidate method's signature
+    SString &sMismatchInfo)
+{
+    CONTRACTL
+    {
+        THROWS;
+        GC_TRIGGERS;
+        MODE_ANY;
+    }
+    CONTRACTL_END;
+
+    SigParser sig1(pSig1, cSig1);
+    SigParser sig2(pSig2, cSig2);
+
+    // Skip calling conventions
+    ULONG callingConv1, callingConv2;
+    if (FAILED(sig1.GetCallingConvInfo(&callingConv1)) ||
+        FAILED(sig2.GetCallingConvInfo(&callingConv2)))
+        return FALSE;
+
+    // Skip generic param counts if present
+    if (callingConv1 & IMAGE_CEE_CS_CALLCONV_GENERIC)
+    {
+        ULONG genCount;
+        if (FAILED(sig1.GetData(&genCount)))
+            return FALSE;
+    }
+    if (callingConv2 & IMAGE_CEE_CS_CALLCONV_GENERIC)
+    {
+        ULONG genCount;
+        if (FAILED(sig2.GetData(&genCount)))
+            return FALSE;
     }
 
-    // Get arg count
-    ULONG cArgs;
-    if (FAILED(sig.GetData(&cArgs)))
-        return;
+    // Get parameter counts
+    ULONG cArgs1, cArgs2;
+    if (FAILED(sig1.GetData(&cArgs1)) || FAILED(sig2.GetData(&cArgs2)))
+        return FALSE;
 
-    // We iterate the return type + all parameter types looking for class/valuetype references.
-    // For each, we report its type name and the assembly it references.
-    bool fFirstType = true;
-    for (ULONG i = 0; i <= cArgs; i++)
+    if (cArgs1 != cArgs2)
+        return FALSE;
+
+    IMDInternalImport *pImport1 = pModule1->GetMDImport();
+    IMDInternalImport *pImport2 = pModule2->GetMDImport();
+
+    // Walk the return type + all parameter types in parallel.
+    for (ULONG i = 0; i <= cArgs1; i++)
     {
-        // Save the position to scan for class/valuetype references within this type
-        SigParser sigType = sig;
+        // Save position for scanning the top-level type element
+        SigParser sigElem1 = sig1;
+        SigParser sigElem2 = sig2;
 
-        // Skip past this type element for the next iteration
-        if (FAILED(sig.SkipExactlyOne()))
-            break;
+        // Skip past this element for the next iteration
+        if (FAILED(sig1.SkipExactlyOne()) || FAILED(sig2.SkipExactlyOne()))
+            return FALSE;
 
-        // Now scan sigType for ELEMENT_TYPE_CLASS or ELEMENT_TYPE_VALUETYPE
-        // We use a simple iterative walk of this single type element
-        CorElementType type;
+        // Walk through wrapper types (arrays, pointers, byrefs, genericinst)
+        // until we reach the core class/valuetype or a primitive.
         for (;;)
         {
-            if (FAILED(sigType.GetElemType(&type)))
+            CorElementType type1, type2;
+            if (FAILED(sigElem1.GetElemType(&type1)) || FAILED(sigElem2.GetElemType(&type2)))
                 break;
 
-            if (type == ELEMENT_TYPE_CLASS || type == ELEMENT_TYPE_VALUETYPE)
+            if (type1 != type2)
+                break;
+
+            if (type1 == ELEMENT_TYPE_CLASS || type1 == ELEMENT_TYPE_VALUETYPE)
             {
-                mdToken token;
-                if (FAILED(sigType.GetToken(&token)))
+                mdToken tk1, tk2;
+                if (FAILED(sigElem1.GetToken(&tk1)) || FAILED(sigElem2.GetToken(&tk2)))
                     break;
 
-                LPCSTR szName = NULL;
-                LPCSTR szNamespace = NULL;
-                LPCSTR szAssemblyName = NULL;
+                // Quick check: same module and same token means same type, no mismatch.
+                if (pModule1 == pModule2 && tk1 == tk2)
+                    break;
 
-                if (TypeFromToken(token) == mdtTypeRef)
+                // Resolve both tokens to their defining modules
+                Module *pFoundModule1 = NULL;
+                Module *pFoundModule2 = NULL;
+                mdToken foundTk1, foundTk2;
+
+                if (!ClassLoader::ResolveTokenToTypeDefThrowing(pModule1, tk1, &pFoundModule1, &foundTk1,
+                        Loader::SafeLookup) ||
+                    !ClassLoader::ResolveTokenToTypeDefThrowing(pModule2, tk2, &pFoundModule2, &foundTk2,
+                        Loader::SafeLookup))
                 {
-                    if (FAILED(pInternalImport->GetNameOfTypeRef(token, &szNamespace, &szName)))
-                        break;
-
-                    // Get the resolution scope to find the assembly reference
-                    mdToken tkResScope;
-                    if (SUCCEEDED(pInternalImport->GetResolutionScopeOfTypeRef(token, &tkResScope)) &&
-                        TypeFromToken(tkResScope) == mdtAssemblyRef)
-                    {
-                        pInternalImport->GetAssemblyRefProps(tkResScope,
-                            NULL, NULL,         // public key
-                            &szAssemblyName,    // name
-                            NULL,               // metadata
-                            NULL, NULL,         // hash
-                            NULL);              // flags
-                    }
-                }
-                else if (TypeFromToken(token) == mdtTypeDef)
-                {
-                    if (FAILED(pInternalImport->GetNameOfTypeDef(token, &szName, &szNamespace)))
-                        break;
-
-                    // TypeDef means the type is defined in pModule's own assembly
-                    szAssemblyName = pModule->GetAssembly()->GetSimpleName();
+                    break;
                 }
 
-                if (szName != NULL)
+                // If the types resolve to the same module, they're the same type - no ALC mismatch
+                if (pFoundModule1 == pFoundModule2)
+                    break;
+
+                // Different modules - check if the type name is the same. If so, this is an ALC mismatch.
+                LPCSTR szName1 = NULL, szNamespace1 = NULL;
+                LPCSTR szName2 = NULL, szNamespace2 = NULL;
+
+                if (FAILED(pFoundModule1->GetMDImport()->GetNameOfTypeDef(foundTk1, &szName1, &szNamespace1)) ||
+                    FAILED(pFoundModule2->GetMDImport()->GetNameOfTypeDef(foundTk2, &szName2, &szNamespace2)))
                 {
-                    if (fFirstType)
-                    {
-                        fFirstType = false;
-                    }
-                    else
-                    {
-                        sInfo.Append(W(", "));
-                    }
-
-                    if (szNamespace != NULL && *szNamespace != '\0')
-                    {
-                        sInfo.AppendUTF8(szNamespace);
-                        sInfo.Append(W("."));
-                    }
-                    sInfo.AppendUTF8(szName);
-
-                    if (szAssemblyName != NULL)
-                    {
-                        sInfo.Append(W(" (from assembly '"));
-                        sInfo.AppendUTF8(szAssemblyName);
-                        sInfo.Append(W("')"));
-                    }
+                    break;
                 }
+
+                if (szName1 != NULL && szName2 != NULL &&
+                    strcmp(szName1, szName2) == 0 &&
+                    strcmp(szNamespace1, szNamespace2) == 0)
+                {
+                    // Found an ALC mismatch! The same type name resolves to different modules.
+                    Assembly *pAssembly1 = pFoundModule1->GetAssembly();
+                    Assembly *pAssembly2 = pFoundModule2->GetAssembly();
+
+                    PEAssembly *pPE1 = pAssembly1->GetManifestFile();
+                    PEAssembly *pPE2 = pAssembly2->GetManifestFile();
+
+                    // Format the type name
+                    if (szNamespace1 != NULL && *szNamespace1 != '\0')
+                    {
+                        sMismatchInfo.AppendUTF8(szNamespace1);
+                        sMismatchInfo.Append(W("."));
+                    }
+                    sMismatchInfo.AppendUTF8(szName1);
+
+                    sMismatchInfo.Append(W(" is loaded in the caller from "));
+                    FormatAssemblyInfo(pPE1, sMismatchInfo);
+                    sMismatchInfo.Append(W(" but in the target from "));
+                    FormatAssemblyInfo(pPE2, sMismatchInfo);
+
+                    return TRUE;
+                }
+
                 break;
             }
-            else if (type == ELEMENT_TYPE_SZARRAY || type == ELEMENT_TYPE_PTR || type == ELEMENT_TYPE_BYREF)
+            else if (type1 == ELEMENT_TYPE_SZARRAY || type1 == ELEMENT_TYPE_PTR ||
+                     type1 == ELEMENT_TYPE_BYREF)
             {
-                // These modify the next type, so continue scanning
+                // These modify the next type, continue scanning deeper
                 continue;
             }
-            else if (type == ELEMENT_TYPE_GENERICINST)
+            else if (type1 == ELEMENT_TYPE_GENERICINST)
             {
                 // The next element is the generic type, continue to read it
                 continue;
             }
             else
             {
-                // Primitive type or something we don't need to report on
                 break;
             }
         }
     }
+
+    return FALSE;
 }
 
 void DECLSPEC_NORETURN MemberLoader::ThrowMissingMethodException(MethodTable* pMT, LPCSTR szMember, Module *pModule, PCCOR_SIGNATURE pSig,DWORD cSig,const SigTypeContext *pTypeContext)
@@ -262,18 +302,38 @@ void DECLSPEC_NORETURN MemberLoader::ThrowMissingMethodException(MethodTable* pM
         SigFormat sf(tmp, szMember ? szMember : "?", szClassName, NULL);
         MAKE_WIDEPTR_FROMUTF8(szwFullName, sf.GetCString());
 
-        // Collect assembly information for the types referenced in the method signature's
-        // return type and parameters. This helps diagnose issues caused by
-        // AssemblyLoadContext mismatches where the same type loaded in different ALCs has
-        // different identities, causing signature comparison to fail.
-        InlineSString<MAX_LONGPATH> sTypeAssemblyInfo;
-        AppendSignatureTypeAssemblyInfo(pSig, cSig, pModule, sTypeAssemblyInfo);
-        if (!sTypeAssemblyInfo.IsEmpty())
+        // Look for an AssemblyLoadContext mismatch: find a name-matched candidate method
+        // on the target type and compare signatures to find a parameter/return type that
+        // has the same name but different type identity due to being loaded from different
+        // assembly contexts.
+        if (pMT != NULL && szMember != NULL)
         {
-            EX_THROW(EEMessageException, (kMissingMethodException,
-                IDS_EE_MISSING_METHOD_DETAIL,
-                szwFullName,
-                sTypeAssemblyInfo.GetUnicode()));
+            MethodTable::MethodIterator it(pMT);
+            it.MoveToEnd();
+
+            for (; it.IsValid(); it.Prev())
+            {
+                MethodDesc *pCandidateMD = it.GetDeclMethodDesc();
+
+                if (strcmp(szMember, pCandidateMD->GetName()) != 0)
+                    continue;
+
+                PCCOR_SIGNATURE pCandidateSig;
+                DWORD cCandidateSig;
+                pCandidateMD->GetSig(&pCandidateSig, &cCandidateSig);
+
+                InlineSString<MAX_LONGPATH> sMismatchInfo;
+                if (FindSignatureTypeMismatch(
+                        pSig, cSig, pModule,
+                        pCandidateSig, cCandidateSig, pCandidateMD->GetModule(),
+                        sMismatchInfo))
+                {
+                    EX_THROW(EEMessageException, (kMissingMethodException,
+                        IDS_EE_MISSING_METHOD_DETAIL,
+                        szwFullName,
+                        sMismatchInfo.GetUnicode()));
+                }
+            }
         }
 
         EX_THROW(EEMessageException, (kMissingMethodException, IDS_EE_MISSING_METHOD, szwFullName));

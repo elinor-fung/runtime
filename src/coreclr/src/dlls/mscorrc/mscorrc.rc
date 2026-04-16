@@ -474,7 +474,7 @@ BEGIN
 
     IDS_EE_MISSING_FIELD                    "Field not found: '%1'."
     IDS_EE_MISSING_METHOD                   "Method not found: '%1'."
-    IDS_EE_MISSING_METHOD_DETAIL            "Method not found: '%1'. The signature type(s) referenced in the method are: %2."
+    IDS_EE_MISSING_METHOD_DETAIL            "Method not found: '%1'. Type mismatch detected: %2."
 
     IDS_EE_NO_IDISPATCH                     "This object cannot be marshaled as an IDispatch."
     IDS_EE_NO_IINSPECTABLE                  "Marshalling as IInspectable is not supported in the .NET runtime."
