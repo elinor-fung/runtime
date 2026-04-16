@@ -222,7 +222,8 @@ static BOOL FindSignatureTypeMismatch(
 
                 if (szName1 != NULL && szName2 != NULL &&
                     strcmp(szName1, szName2) == 0 &&
-                    strcmp(szNamespace1, szNamespace2) == 0)
+                    ((szNamespace1 == szNamespace2) ||
+                     (szNamespace1 != NULL && szNamespace2 != NULL && strcmp(szNamespace1, szNamespace2) == 0)))
                 {
                     // Found an ALC mismatch! The same type name resolves to different modules.
                     Assembly *pAssembly1 = pFoundModule1->GetAssembly();
