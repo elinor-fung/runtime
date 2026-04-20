@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <CLRTestKind>BuildOnly</CLRTestKind>
+    <CLRTestPriority>0</CLRTestPriority>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="PluginCaller.cs" />
+    <ProjectReference Include="PluginType.csproj" />
+    <ProjectReference Include="PluginWorker.csproj" />
+  </ItemGroup>
+</Project>
