@@ -242,6 +242,6 @@ class ALCMismatchTest
         Run("TestALCMismatch_ByteLoad",   TestALCMismatch_ByteLoad);
         Run("TestNoMismatch_SameALC",     TestNoMismatch_SameALC);
 
-        return passed ? 100 : -1;
+        return passed ? 100 : 101;
     }
 }
