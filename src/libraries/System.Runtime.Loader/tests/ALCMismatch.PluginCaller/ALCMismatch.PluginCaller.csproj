@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="PluginCaller.cs" />
+    <ProjectReference Include="..\ALCMismatch.PluginType\ALCMismatch.PluginType.csproj" />
+    <ProjectReference Include="..\ALCMismatch.PluginWorker\ALCMismatch.PluginWorker.csproj" />
+  </ItemGroup>
+</Project>

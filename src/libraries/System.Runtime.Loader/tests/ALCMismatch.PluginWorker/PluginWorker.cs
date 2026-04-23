@@ -7,8 +7,8 @@ namespace Workers
 {
     public class Worker
     {
-        // Method whose parameter type (MyType) is the one that will be loaded
-        // in two separate ALCs, producing an ALC mismatch MissingMethodException.
+        // Method whose parameter type (MyType) will be loaded from two separate
+        // AssemblyLoadContexts, triggering an ALC-mismatch MissingMethodException.
         public void Process(MyType arg) { }
     }
 }

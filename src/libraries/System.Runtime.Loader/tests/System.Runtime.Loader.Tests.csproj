@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyLoadContextTest.cs" />
+    <Compile Include="AssemblyLoadContextTest.ALCMismatch.cs" />
     <Compile Include="CollectibleAssemblyLoadContextTest.cs" />
     <Compile Include="ContextualReflection.cs" />
     <Compile Include="CustomTPALoadContext.cs" />
@@ -32,6 +33,9 @@
     <ProjectReference Include="ReferencedClassLibNeutralIsSatellite\ReferencedClassLibNeutralIsSatellite.csproj" />
     <ProjectReference Include="LoaderLinkTest.Shared\LoaderLinkTest.Shared.csproj" />
     <ProjectReference Include="LoaderLinkTest.Dynamic\LoaderLinkTest.Dynamic.csproj" />
+    <ProjectReference Include="ALCMismatch.PluginType\ALCMismatch.PluginType.csproj" />
+    <ProjectReference Include="ALCMismatch.PluginWorker\ALCMismatch.PluginWorker.csproj" />
+    <ProjectReference Include="ALCMismatch.PluginCaller\ALCMismatch.PluginCaller.csproj" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetOS)' == 'Browser'">
     <WasmFilesToIncludeFromPublishDir Include="$(AssemblyName).dll" />
