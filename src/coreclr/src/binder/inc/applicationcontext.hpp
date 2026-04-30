@@ -94,7 +94,6 @@ namespace BINDER_SPACE
         virtual ~ApplicationContext();
         HRESULT Init(UINT_PTR binderID);
 
-        inline SString &GetApplicationName();
         inline DWORD GetAppDomainId();
         inline void SetAppDomainId(DWORD dwAppDomainId);
 
@@ -128,7 +127,6 @@ namespace BINDER_SPACE
     protected:
         LONG               m_cRef;
         Volatile<LONG>     m_cVersion;
-        SString            m_applicationName;
         DWORD              m_dwAppDomainId;
         ExecutionContext  *m_pExecutionContext;
         FailureCache      *m_pFailureCache;

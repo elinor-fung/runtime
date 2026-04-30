@@ -24,11 +24,6 @@ void ApplicationContext::IncrementVersion()
     InterlockedIncrement(&m_cVersion);
 }
 
-SString &ApplicationContext::GetApplicationName()
-{
-    return m_applicationName;
-}
-
 DWORD ApplicationContext::GetAppDomainId()
 {
     return m_dwAppDomainId;
