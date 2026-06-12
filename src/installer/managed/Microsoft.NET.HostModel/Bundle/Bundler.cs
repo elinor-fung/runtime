@@ -405,20 +405,13 @@ namespace Microsoft.NET.HostModel.Bundle
                         _tracer.Log($"Removing existing bundle file to clear signature cache: {bundlePath}");
                         File.Delete(bundlePath);
                     }
-                    using (FileStream bundleOutputStream = File.Open(bundlePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    using (FileStream bundleOutputStream = HostModelUtils.CreateFileStreamForHost(bundlePath, FileAccess.Write, FileShare.None))
                     {
                         BinaryUtils.WriteToStream(accessor, bundleOutputStream, (long)endOfBundle);
                     }
                 }
             }
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                // chmod +755
-                File.SetUnixFileMode(bundlePath,
-                     UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
-                     UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
-                     UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
-            }
+            HostModelUtils.SetPermissionsForHost(bundlePath);
             return bundlePath;
         }
 
